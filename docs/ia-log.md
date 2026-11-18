@@ -87,3 +87,12 @@ Abra o `docs/ia-log.md` e adicione a **Interação 4**:
   1. Validada a leitura de rateio por `Periodo` usando a transferência da usina e soma de quotas igual a `100m` por período (com verificação explícita da existência dos dois períodos).
   2. Mantido o teste explícito confirmando `Qtd_transferencia == 0` nas linhas recebedoras para documentar a estrutura do XML da CEMIG.
 - **Verificação:** Executado `dotnet test` com todos os testes passando (gabarito de 11 linhas, quotas e rateio verdes).
+
+## Interação 8 — CLI, Formatação de Tabela/Alertas e Tratamento de Erros (`Program.cs`, `FormatadorRelatorio.cs` e `FormatadorRelatorioTests.cs`)
+- **Pedido:** Implementar a aplicação de console em `src/GdReport.Cli` aceitando o caminho do XML via argumento, imprimindo a tabela e os alertas no terminal e criando testes de formatação.
+- **Sugestão e Alinhamento com a IA:**
+  1. A IA centralizou a formatação numérica em `FormatadorRelatorio.Valor` (reutilizada também na geração dos alertas) e configurou `Console.OutputEncoding = Encoding.UTF8`.
+  2. Acrescentou tratamento para XML malformado e valores inválidos retornando exit code `1` sem stack trace, e alertou sobre o ruído do MSBuild no `dotnet run`.
+- **Correção / Decisão Humana:**
+  1. Mantidos os códigos de saída `0` (sucesso) e `1` (argumento ausente, arquivo inexistente ou entrada inválida/malformada) e a tabela de 9 colunas (`UC`, `fatura`, `quota`, `consumo`, `recebido`, `compensado`, `saldo`, `geração própria`, `alerta`).
+- **Verificação:** Executado `dotnet test` com 69 de 69 testes passando e validada a execução do CLI sobre `data/Relatorio_GD_UFV_Exemplo_2026-09.xml`.

@@ -82,19 +82,7 @@ public static class ProcessadorRelatorio
         }
 
         var diferenca = Math.Abs(calculado - fatura.Saldo);
-        return $"calculado {FormatarPtBr(calculado)}, arquivo {FormatarPtBr(fatura.Saldo)} (diferença {FormatarPtBr(diferenca)})";
-    }
-
-    // Separadores fixos de pt-BR, sem depender da cultura do sistema. Zeros à direita são omitidos e nenhuma casa é arredondada.
-    private static readonly NumberFormatInfo FormatoPtBr = new()
-    {
-        NumberDecimalSeparator = ",",
-        NumberGroupSeparator = "."
-    };
-
-    private static string FormatarPtBr(decimal valor)
-    {
-        return valor.ToString("#,##0.############################", FormatoPtBr);
+        return $"calculado {FormatadorRelatorio.Valor(calculado)}, arquivo {FormatadorRelatorio.Valor(fatura.Saldo)} (diferença {FormatadorRelatorio.Valor(diferenca)})";
     }
 
     private static void ValidarPeriodos(IEnumerable<RegistroGd> registros)
