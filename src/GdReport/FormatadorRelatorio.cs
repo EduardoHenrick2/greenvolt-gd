@@ -80,6 +80,41 @@ public static class FormatadorRelatorio
         return $"Alertas\n{corpo}";
     }
 
+    // Texto completo do relatório, igual ao que a CLI imprime no terminal.
+    public static string Relatorio(RelatorioApuracao relatorio)
+    {
+        return string.Join("\n\n",
+            TabelaUsinas(relatorio.Usinas),
+            TabelaFaturasUc(relatorio.FaturasUc),
+            Alertas(relatorio.FaturasUc));
+    }
+
+    // Uma linha por fatura de UC. Alerta vazio quando a equação fecha.
+    public static string Csv(IReadOnlyList<LinhaFaturaUc> faturas)
+    {
+        var cabecalho = "UC,fatura,quota,consumo,recebido,compensado,saldo,geração própria,alerta";
+
+        var linhas = faturas.Select(f => string.Join(",",
+            EscaparCsv(f.Uc),
+            EscaparCsv(f.Fatura),
+            EscaparCsv(Percentual(f.Quota)),
+            EscaparCsv(Valor(f.Consumo)),
+            EscaparCsv(Valor(f.Recebido)),
+            EscaparCsv(Valor(f.Compensado)),
+            EscaparCsv(Valor(f.Saldo)),
+            EscaparCsv(Valor(f.GeracaoPropria)),
+            EscaparCsv(f.Alerta ?? string.Empty)));
+
+        return string.Join("\n", new[] { cabecalho }.Concat(linhas));
+    }
+
+    // Entre aspas só quando o campo tem separador, aspas ou quebra de linha. Aspas internas são duplicadas.
+    private static string EscaparCsv(string campo)
+    {
+        var precisaDeAspas = campo.IndexOfAny([',', ';', '"', '\n', '\r']) >= 0;
+        return precisaDeAspas ? $"\"{campo.Replace("\"", "\"\"")}\"" : campo;
+    }
+
     // Monta uma linha da tabela Markdown.
     private static string Linha(params string[] celulas)
     {
