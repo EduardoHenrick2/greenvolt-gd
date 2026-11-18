@@ -25,3 +25,33 @@
   2. Definido manter `Quota` em pontos percentuais (`20m` para `20%`), facilitando a exibição nos relatórios e a conferência de soma igual a 100%.
   3. Mantidos os testes extras de integração que validam as 14 linhas do XML real, encoding de caracteres acentuados (`Geração`) e soma real de `Qtd_compensacao` (`7400.0 + 500.0 = 7900`).
 - **Verificação:** Executado `dotnet test` com todos os testes (unitários e de integração com o XML real) passando.
+
+## Interação 4 — Modelos de Saída e Apuração da Usina Geradora (`RelatorioApuracao.cs`, `ProcessadorRelatorio.cs` e `ProcessadorRelatorioTests.cs`)
+- **Pedido:** Criar os `records` imutáveis de saída (`LinhaUsina`, `LinhaFaturaUc`, `RelatorioApuracao`) e implementar a separação e apuração da usina geradora em `ProcessadorRelatorio.Processar` com TDD.
+- **Sugestão e Alinhamento com a IA:** A IA implementAs três decisões que o Kiro tomou na Parte 2 estão **100% corretas e alinhadas com as regras de negócio**. Especialmente o terceiro ponto: no arquivo da CEMIG, a UC `7000110055` tem geração própria (então sua modalidade traz tanto "Geradora" quanto "Recebedora"), e o teste que ele criou garante que ela não seja confundida com a usina principal (`3010000000`).
+
+Abaixo estão o roteiro de explicação desta etapa para a sua entrevista, o registro do `ia-log.md`, o commit e o prompt da **Fase 3 — Parte 3 (Agrupamento das UCs e Validação do Gabarito)**.
+
+---
+
+**1. Roteiro para a Apresentação de 20 Minutos (Como explicar a Parte 2)**
+
+* **Filtro da Usina vs. UC com Geração Própria:**
+  * *"Para isolar a usina (`3010000000`), filtramos registros onde `Modalidade` contém `'Geradora'` e **não** contém `'Recebedora'` (usando `StringComparison.OrdinalIgnoreCase`). Essa segunda condição é essencial porque uma unidade consumidora pode ter microgeração própria e aparecer como Geradora/Recebedora simultaneamente — como acontece na UC `7000110055` — devendo permanecer na tabela de clientes."*
+* **Prova Real Física da Usina:**
+  * *"Nos testes de integração com o XML real, validamos a identidade física da usina nos dois meses (`2026-08` e `2026-09`): tudo o que a usina gerou (`11.500` e `12.000` kWh) é exatamente igual à soma do que ela transferiu para as UCs (`11.300` e `11.800` kWh) mais a sua compensação própria (`200` kWh)."*
+
+---
+
+**2. Registro para adicionar no seu `docs/ia-log.md`**
+
+Abra o `docs/ia-log.md` e adicione a **Interação 4**:
+
+```markdown
+## Interação 4 — Modelos de Saída e Apuração da Usina Geradora (`RelatorioApuracao.cs` e `ProcessadorRelatorio.cs`)
+- **Pedido:** Criar os records imutáveis de saída (`LinhaUsina`, `LinhaFaturaUc`, `RelatorioApuracao`) e implementar a separação e cálculo da Usina Geradora com TDD.
+- **Sugestão e Alinhamento com a IA:** A IA estruturou o filtro da usina (`Modalidade` com "Geradora" e sem "Recebedora", case-insensitive), aplicou a regra de não somar `Qtd_compensacao` entre linhas do mesmo grupo e utilizou o menor/maior `Periodo` para `SaldoAnterior` e `Saldo`.
+- **Correção / Decisão Humana:**
+  1. Confirmada a regra de exclusão de "Recebedora" no filtro da usina, garantindo que UCs clientes com geração própria (ex: UC 7000110055) permaneçam na lista de UCs.
+  2. Validado no XML real que a usina `3010000000` fecha a equação `Geracao == Transferencia + CompensacaoPropria` nos períodos `2026-08` (11.500 = 11.300 + 200) e `2026-09` (12.000 = 11.800 + 200).
+- **Verificação:** Executado `dotnet test` com 38 de 38 testes passando.
