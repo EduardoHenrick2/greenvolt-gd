@@ -28,32 +28,14 @@
 
 ## Interação 4 — Modelos de Saída e Apuração da Usina Geradora (`RelatorioApuracao.cs`, `ProcessadorRelatorio.cs` e `ProcessadorRelatorioTests.cs`)
 - **Pedido:** Criar os `records` imutáveis de saída (`LinhaUsina`, `LinhaFaturaUc`, `RelatorioApuracao`) e implementar a separação e apuração da usina geradora em `ProcessadorRelatorio.Processar` com TDD.
-- **Sugestão e Alinhamento com a IA:** A IA implementAs três decisões que o Kiro tomou na Parte 2 estão **100% corretas e alinhadas com as regras de negócio**. Especialmente o terceiro ponto: no arquivo da CEMIG, a UC `7000110055` tem geração própria (então sua modalidade traz tanto "Geradora" quanto "Recebedora"), e o teste que ele criou garante que ela não seja confundida com a usina principal (`3010000000`).
-
-Abaixo estão o roteiro de explicação desta etapa para a sua entrevista, o registro do `ia-log.md`, o commit e o prompt da **Fase 3 — Parte 3 (Agrupamento das UCs e Validação do Gabarito)**.
-
----
-
-**1. Roteiro para a Apresentação de 20 Minutos (Como explicar a Parte 2)**
-
-* **Filtro da Usina vs. UC com Geração Própria:**
-  * *"Para isolar a usina (`3010000000`), filtramos registros onde `Modalidade` contém `'Geradora'` e **não** contém `'Recebedora'` (usando `StringComparison.OrdinalIgnoreCase`). Essa segunda condição é essencial porque uma unidade consumidora pode ter microgeração própria e aparecer como Geradora/Recebedora simultaneamente — como acontece na UC `7000110055` — devendo permanecer na tabela de clientes."*
-* **Prova Real Física da Usina:**
-  * *"Nos testes de integração com o XML real, validamos a identidade física da usina nos dois meses (`2026-08` e `2026-09`): tudo o que a usina gerou (`11.500` e `12.000` kWh) é exatamente igual à soma do que ela transferiu para as UCs (`11.300` e `11.800` kWh) mais a sua compensação própria (`200` kWh)."*
-
----
-
-**2. Registro para adicionar no seu `docs/ia-log.md`**
-
-Abra o `docs/ia-log.md` e adicione a **Interação 4**:
-
-```markdown
-## Interação 4 — Modelos de Saída e Apuração da Usina Geradora (`RelatorioApuracao.cs` e `ProcessadorRelatorio.cs`)
-- **Pedido:** Criar os records imutáveis de saída (`LinhaUsina`, `LinhaFaturaUc`, `RelatorioApuracao`) e implementar a separação e cálculo da Usina Geradora com TDD.
-- **Sugestão e Alinhamento com a IA:** A IA estruturou o filtro da usina (`Modalidade` com "Geradora" e sem "Recebedora", case-insensitive), aplicou a regra de não somar `Qtd_compensacao` entre linhas do mesmo grupo e utilizou o menor/maior `Periodo` para `SaldoAnterior` e `Saldo`.
+- **Sugestão e Alinhamento com a IA:**
+  1. A IA estruturou o filtro da usina (`Modalidade` contendo "Geradora" e sem "Recebedora", sem diferenciar maiúsculas) e o agrupamento por `Instalacao + PeriodoUso`, somando `QtdGeracao` e `QtdTransferencia` entre linhas.
+  2. Propôs não somar `Qtd_compensacao` entre linhas do mesmo grupo (`CompensacaoPropria` é valor da fatura inteira) e usar o menor/maior `Periodo` para `SaldoAnterior` e `Saldo`.
+  3. Propôs que uma linha cuja `Modalidade` contenha as duas palavras ("Geradora" e "Recebedora") não seja tratada como usina e vá para as UCs, coberto por um teste com dados sintéticos.
 - **Correção / Decisão Humana:**
-  1. Confirmada a regra de exclusão de "Recebedora" no filtro da usina, garantindo que UCs clientes com geração própria (ex: UC 7000110055) permaneçam na lista de UCs.
-  2. Validado no XML real que a usina `3010000000` fecha a equação `Geracao == Transferencia + CompensacaoPropria` nos períodos `2026-08` (11.500 = 11.300 + 200) e `2026-09` (12.000 = 11.800 + 200).
+  1. Confirmadas as três decisões acima.
+  2. No XML real, a única usina é a instalação `3010000000` ("Geração compartilhada - Geradora"). Todas as UCs, inclusive a `7000110055`, têm `Modalidade` "Geração compartilhada - Recebedora". A geração própria da UC `7000110055` (280 em 2026-08 e 300 em 2026-09) vem da tag `Qtd_geracao`, entra no cálculo do saldo e aparece na coluna `geração própria` (implementado na Interação 5).
+  3. Validado no XML real que a usina fecha a equação `Geracao == Transferencia + CompensacaoPropria` nos períodos `2026-08` (11.500 = 11.300 + 200) e `2026-09` (12.000 = 11.800 + 200).
 - **Verificação:** Executado `dotnet test` com 38 de 38 testes passando.
 
 ## Interação 5 — Agrupamento das UCs Clientes, Ordenação Cronológica e Gabarito (`ProcessadorRelatorio.cs`)
@@ -96,3 +78,13 @@ Abra o `docs/ia-log.md` e adicione a **Interação 4**:
 - **Correção / Decisão Humana:**
   1. Mantidos os códigos de saída `0` (sucesso) e `1` (argumento ausente, arquivo inexistente ou entrada inválida/malformada) e a tabela de 9 colunas (`UC`, `fatura`, `quota`, `consumo`, `recebido`, `compensado`, `saldo`, `geração própria`, `alerta`).
 - **Verificação:** Executado `dotnet test` com 69 de 69 testes passando e validada a execução do CLI sobre `data/Relatorio_GD_UFV_Exemplo_2026-09.xml`.
+
+## Interação 9 — Exportação CSV/Markdown, Flags `--md`/`--csv` e Geração de `docs/saida-exemplo.*` (`FormatadorRelatorio.cs`, `Program.cs`, `FormatadorRelatorioTests.cs`)
+- **Pedido:** Implementar a geração de saída CSV com o cabeçalho exigido e gerar os arquivos `docs/saida-exemplo.md` e `docs/saida-exemplo.csv` a partir do mesmo processamento do XML de exemplo.
+- **Sugestão e Alinhamento com a IA:**
+  1. A IA unificou a geração do console e de `docs/saida-exemplo.md` em `FormatadorRelatorio.Relatorio` e adicionou `--md` e `--csv` opcionais na CLI.
+  2. Aplicou escaping de campos com vírgula, ponto e vírgula, aspas ou quebra de linha no CSV, manteve `alerta` vazio nas 8 linhas sem divergência e gravou o CSV em UTF-8 com BOM para correta leitura em planilhas pt-BR.
+- **Correção / Decisão Humana:**
+  1. Mantida a formatação numérica em pt-BR no CSV para consistência direta com a tabela exibida e a conferência em planilha.
+  2. Mantido o CSV focado nas 11 faturas de UC e a usina exibida separadamente no relatório Markdown/console.
+- **Verificação:** Executado `dotnet test` com 69+ testes passando e conferidos `docs/saida-exemplo.md` e `docs/saida-exemplo.csv` gerados a partir de `data/Relatorio_GD_UFV_Exemplo_2026-09.xml`.
