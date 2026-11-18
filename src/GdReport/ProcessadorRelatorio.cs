@@ -57,7 +57,7 @@ public static class ProcessadorRelatorio
         // Consumo, Compensado e Quota são valores da fatura inteira: repetem entre as linhas do grupo, então não são somados.
         var primeira = linhas[0];
 
-        return new LinhaFaturaUc(
+        var fatura = new LinhaFaturaUc(
             Uc: primeira.NumeroUc,
             Fatura: periodoUso,
             Quota: primeira.Quota,
@@ -67,6 +67,34 @@ public static class ProcessadorRelatorio
             SaldoAnterior: primeira.QtdSaldoAnt,
             Saldo: linhas[^1].QtdSaldoAtual,
             GeracaoPropria: linhas.Sum(l => l.QtdGeracao));
+
+        return fatura with { Alerta = AlertaDeSaldo(fatura) };
+    }
+
+    // O Saldo do arquivo nunca é corrigido: a divergência só é apontada no alerta (docs/decisoes.md, item 6).
+    private static string? AlertaDeSaldo(LinhaFaturaUc fatura)
+    {
+        var calculado = fatura.SaldoAnterior + fatura.Recebido + fatura.GeracaoPropria - fatura.Compensado;
+
+        if (calculado == fatura.Saldo)
+        {
+            return null;
+        }
+
+        var diferenca = Math.Abs(calculado - fatura.Saldo);
+        return $"calculado {FormatarPtBr(calculado)}, arquivo {FormatarPtBr(fatura.Saldo)} (diferença {FormatarPtBr(diferenca)})";
+    }
+
+    // Separadores fixos de pt-BR, sem depender da cultura do sistema. Zeros à direita são omitidos e nenhuma casa é arredondada.
+    private static readonly NumberFormatInfo FormatoPtBr = new()
+    {
+        NumberDecimalSeparator = ",",
+        NumberGroupSeparator = "."
+    };
+
+    private static string FormatarPtBr(decimal valor)
+    {
+        return valor.ToString("#,##0.############################", FormatoPtBr);
     }
 
     private static void ValidarPeriodos(IEnumerable<RegistroGd> registros)

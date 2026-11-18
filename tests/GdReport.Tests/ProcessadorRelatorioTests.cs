@@ -139,8 +139,9 @@ public class ProcessadorRelatorioTests
         {
             Registro("3002", Recebedora, periodo: "2026-08", periodoUso: "2026-09", numeroUc: "7002",
                 quota: 35m, consumo: 8000m, compensacao: 7900m, recebimento: 3955m, geracao: 10m),
+            // saldoAtual fecha a equação: 0 + 8085 + 30 - 7900 = 215.
             Registro("3002", Recebedora, periodo: "2026-09", periodoUso: "2026-09", numeroUc: "7002",
-                quota: 35m, consumo: 8000m, compensacao: 7900m, recebimento: 4130m, geracao: 20m)
+                quota: 35m, consumo: 8000m, compensacao: 7900m, recebimento: 4130m, geracao: 20m, saldoAtual: 215m)
         };
 
         var relatorio = ProcessadorRelatorio.Processar(registros);
@@ -270,6 +271,84 @@ public class ProcessadorRelatorioTests
 
         Assert.Equal(["2026-08", "2026-09"], faturas.Select(f => f.Fatura));
         Assert.Equal([280m, 300m], faturas.Select(f => f.GeracaoPropria));
+    }
+
+    [Fact]
+    public void Processar_UcComSaldoQueFecha_NaoDeveGerarAlerta()
+    {
+        // 140 + 2260 + 0 - 2250 = 150
+        var registros = new[]
+        {
+            Registro("3002", Recebedora, numeroUc: "7002",
+                saldoAnt: 140m, recebimento: 2260m, compensacao: 2250m, saldoAtual: 150m)
+        };
+
+        var fatura = Assert.Single(ProcessadorRelatorio.Processar(registros).FaturasUc);
+
+        Assert.Equal(150m, fatura.Saldo);
+        Assert.Null(fatura.Alerta);
+    }
+
+    [Fact]
+    public void Processar_UcComGeracaoPropriaQueFecha_NaoDeveGerarAlerta()
+    {
+        // 0 + 1356 + 280 - 1636 = 0
+        var registros = new[]
+        {
+            Registro("3002", Recebedora, numeroUc: "7002",
+                recebimento: 1356m, geracao: 280m, compensacao: 1636m, saldoAtual: 0m)
+        };
+
+        var fatura = Assert.Single(ProcessadorRelatorio.Processar(registros).FaturasUc);
+
+        Assert.Null(fatura.Alerta);
+    }
+
+    [Fact]
+    public void Processar_UcComSaldoDivergente_DevePreservarSaldoDoArquivoEGerarAlerta()
+    {
+        // 60 + 1770 + 0 - 0 = 1830, mas o arquivo informa 155.
+        var registros = new[]
+        {
+            Registro("3002", Recebedora, numeroUc: "7002",
+                saldoAnt: 60m, recebimento: 1770m, compensacao: 0m, saldoAtual: 155m)
+        };
+
+        var fatura = Assert.Single(ProcessadorRelatorio.Processar(registros).FaturasUc);
+
+        Assert.Equal(155m, fatura.Saldo);
+        Assert.Equal("calculado 1.830, arquivo 155 (diferença 1.675)", fatura.Alerta);
+    }
+
+    [Fact]
+    public void Processar_UcComSaldoDivergenteNaoInteiro_DeveMostrarAsCasasDecimaisSemArredondar()
+    {
+        // 1000,5 + 0,255 - 0 = 1000,755, mas o arquivo informa 1000.
+        var registros = new[]
+        {
+            Registro("3002", Recebedora, numeroUc: "7002",
+                saldoAnt: 1000.5m, recebimento: 0.255m, saldoAtual: 1000m)
+        };
+
+        var fatura = Assert.Single(ProcessadorRelatorio.Processar(registros).FaturasUc);
+
+        Assert.Equal("calculado 1.000,755, arquivo 1.000 (diferença 0,755)", fatura.Alerta);
+    }
+
+    [Fact]
+    public void Processar_ArquivoReal_DeveGerarOitoFaturasSemAlertaETresComAlerta()
+    {
+        var faturas = ProcessadorRelatorio.Processar(LeitorXml.LerArquivo(CaminhoArquivoReal())).FaturasUc;
+
+        Assert.Equal(11, faturas.Count);
+        Assert.Equal(8, faturas.Count(f => f.Alerta is null));
+        Assert.Equal(
+            [
+                ("7000110033", "2026-09", 60m, "calculado 135, arquivo 60 (diferença 75)"),
+                ("7000110033", "2026-10", 155m, "calculado 1.830, arquivo 155 (diferença 1.675)"),
+                ("7000110044", "2026-09", 530m, "calculado 30, arquivo 530 (diferença 500)")
+            ],
+            faturas.Where(f => f.Alerta is not null).Select(f => (f.Uc, f.Fatura, f.Saldo, f.Alerta!)));
     }
 
     private static string CaminhoArquivoReal()

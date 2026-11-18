@@ -66,3 +66,13 @@ Abra o `docs/ia-log.md` e adicione a **Interação 4**:
   2. Mantida a validação estrita (`FormatException`) para `Periodo` e `PeriodoUso` inválidos ou vazios (*Fail-Fast*).
   3. Validado o caso real da UC `7000110022` (`2026-09`), que possui duas linhas na mesma fatura (`Recebido = 3955 + 4130 = 8085`, `Consumo = 8000` sem somar, `SaldoAnterior = 300`, `Saldo = 485`), além da UC `7000110011` e da geração própria da UC `7000110055`.
 - **Verificação:** Executado `dotnet test` com 48 de 48 testes passando.
+
+## Interação 6 — Detecção de Inconsistências e Geração de Alertas (`ProcessadorRelatorio.cs`)
+- **Pedido:** Implementar a verificação de consistência do saldo (`SaldoAnterior + Recebido + GeracaoPropria - Compensado == Saldo`) para cada fatura de UC, mantendo o valor do arquivo e gerando alerta formatado em caso de divergência.
+- **Sugestão e Alinhamento com a IA:**
+  1. A IA propôs não arredondar casas decimais significativas dentro do texto do alerta (removendo apenas zeros à direita) para evitar que divergências fracionárias pequenas fossem exibidas como "diferença 0".
+  2. Ajustou o saldo final do mock de um teste unitário da Parte 3 para `215` a fim de fechar a equação naquele cenário onde o foco era apenas testar a soma de recebimentos.
+- **Correção / Decisão Humana:**
+  1. Aprovada a preservação de casas decimais significativas no alerta e formatação pt-BR determinística (independente da cultura do SO).
+  2. Validados no XML real os 3 alertas esperados (UC 7000110033 nas faturas 2026-09 e 2026-10, e UC 7000110044 na fatura 2026-09) e as 8 faturas sem alerta (`Alerta == null`).
+- **Verificação:** Executado `dotnet test` com 53 de 53 testes passando.
