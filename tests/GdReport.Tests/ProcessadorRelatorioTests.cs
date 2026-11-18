@@ -351,6 +351,71 @@ public class ProcessadorRelatorioTests
             faturas.Where(f => f.Alerta is not null).Select(f => (f.Uc, f.Fatura, f.Saldo, f.Alerta!)));
     }
 
+    [Fact]
+    public void Processar_ArquivoReal_DeveReproduzirOGabaritoCompletoDasOnzeFaturas()
+    {
+        LinhaFaturaUc[] gabarito =
+        [
+            // Uc, Fatura, Quota, Consumo, Recebido, Compensado, SaldoAnterior, Saldo, GeracaoPropria, Alerta
+            new("7000110011", "2026-08", 20m, 2250m, 2260m, 2250m, 140m, 150m, 0m),
+            new("7000110011", "2026-09", 20m, 2400m, 2360m, 2300m, 150m, 210m, 0m),
+            new("7000110022", "2026-09", 35m, 8000m, 8085m, 7900m, 300m, 485m, 0m),
+            new("7000110033", "2026-09", 15m, 1600m, 1695m, 1600m, 40m, 60m, 0m,
+                "calculado 135, arquivo 60 (diferença 75)"),
+            new("7000110033", "2026-10", 15m, 0m, 1770m, 0m, 60m, 155m, 0m,
+                "calculado 1.830, arquivo 155 (diferença 1.675)"),
+            new("7000110044", "2026-08", 10m, 1200m, 1130m, 1200m, 170m, 100m, 0m),
+            new("7000110044", "2026-09", 10m, 1500m, 1180m, 1250m, 100m, 530m, 0m,
+                "calculado 30, arquivo 530 (diferença 500)"),
+            new("7000110055", "2026-08", 12m, 1650m, 1356m, 1636m, 0m, 0m, 280m),
+            new("7000110055", "2026-09", 12m, 1700m, 1416m, 1700m, 0m, 16m, 300m),
+            new("7000110066", "2026-08", 8m, 880m, 904m, 880m, 0m, 24m, 0m),
+            new("7000110066", "2026-09", 8m, 900m, 944m, 900m, 24m, 68m, 0m)
+        ];
+
+        var relatorio = ProcessadorRelatorio.Processar(LeitorXml.LerArquivo(CaminhoArquivoReal()));
+
+        Assert.Equal(gabarito, relatorio.FaturasUc);
+    }
+
+    [Fact]
+    public void ArquivoReal_QuotasDasUcsDeveSomarCemPorCentoEmCadaPeriodoDeRateio()
+    {
+        var registros = LeitorXml.LerArquivo(CaminhoArquivoReal());
+
+        // O período de rateio é o Periodo da linha. Cada UC entra uma vez por período com a sua quota.
+        var somaPorPeriodo = registros
+            .Where(r => !EhUsina(r))
+            .GroupBy(r => r.Periodo)
+            .ToDictionary(g => g.Key, g => g.DistinctBy(r => r.NumeroUc).Sum(r => r.Quota));
+
+        Assert.Equal(["2026-08", "2026-09"], somaPorPeriodo.Keys.Order());
+        Assert.All(somaPorPeriodo.Values, soma => Assert.Equal(100m, soma));
+    }
+
+    [Fact]
+    public void ArquivoReal_RecebidoDeCadaLinhaDeRateioDeveSerATransferenciaDaUsinaVezesAQuota()
+    {
+        var registros = LeitorXml.LerArquivo(CaminhoArquivoReal());
+
+        var transferenciaDaUsinaPorPeriodo = registros
+            .Where(EhUsina)
+            .GroupBy(r => r.Periodo)
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.QtdTransferencia));
+        var linhasDeRateio = registros.Where(r => !EhUsina(r)).ToList();
+
+        Assert.Equal(12, linhasDeRateio.Count);
+        // A transferência só aparece na linha da usina; nas recebedoras a tag vem zerada.
+        Assert.All(linhasDeRateio, r => Assert.Equal(0m, r.QtdTransferencia));
+        Assert.All(linhasDeRateio, r =>
+            Assert.Equal(transferenciaDaUsinaPorPeriodo[r.Periodo] * (r.Quota / 100m), r.QtdRecebimento));
+    }
+
+    private static bool EhUsina(RegistroGd registro)
+    {
+        return registro.Modalidade.Contains("Geradora") && !registro.Modalidade.Contains("Recebedora");
+    }
+
     private static string CaminhoArquivoReal()
     {
         var pasta = new DirectoryInfo(AppContext.BaseDirectory);

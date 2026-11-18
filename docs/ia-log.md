@@ -76,3 +76,14 @@ Abra o `docs/ia-log.md` e adicione a **Interação 4**:
   1. Aprovada a preservação de casas decimais significativas no alerta e formatação pt-BR determinística (independente da cultura do SO).
   2. Validados no XML real os 3 alertas esperados (UC 7000110033 nas faturas 2026-09 e 2026-10, e UC 7000110044 na fatura 2026-09) e as 8 faturas sem alerta (`Alerta == null`).
 - **Verificação:** Executado `dotnet test` com 53 de 53 testes passando.
+
+## Interação 7 — Auditoria Completa do Gabarito (11 Linhas), Quotas e Invariante de Rateio (`ProcessadorRelatorioTests.cs`)
+- **Pedido:** Adicionar testes de integração contra o XML real (`data/Relatorio_GD_UFV_Exemplo_2026-09.xml`) validando todas as 11 linhas do gabarito, soma das quotas igual a 100% e a regra `Recebido == Transferencia × Quota`.
+- **Sugestão e Alinhamento com a IA:**
+  1. A IA comparou o resultado completo das 11 `LinhaFaturaUc` (incluindo `SaldoAnterior`) usando igualdade estrutural de `record`.
+  2. Demonstrou que nas linhas recebedoras `Qtd_transferencia` é `0` e o período de rateio segue `Periodo` (não `Periodo_uso`), validando `QtdRecebimento == TransferenciaUsina * (Quota / 100m)` nos períodos `2026-08` e `2026-09` (ex.: UC `7000110011` em `2026-08`: `11.300 × 20% = 2.260`).
+  3. Apontou a duplicação do filtro da usina em um helper privado de teste como ponto de atenção para manutenção futura.
+- **Correção / Decisão Humana:**
+  1. Validada a leitura de rateio por `Periodo` usando a transferência da usina e soma de quotas igual a `100m` por período (com verificação explícita da existência dos dois períodos).
+  2. Mantido o teste explícito confirmando `Qtd_transferencia == 0` nas linhas recebedoras para documentar a estrutura do XML da CEMIG.
+- **Verificação:** Executado `dotnet test` com todos os testes passando (gabarito de 11 linhas, quotas e rateio verdes).
