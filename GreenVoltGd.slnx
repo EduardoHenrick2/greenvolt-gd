@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GdReport.Cli/GdReport.Cli.csproj" />
+    <Project Path="src/GdReport/GdReport.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GdReport.Tests/GdReport.Tests.csproj" />
+  </Folder>
+</Solution>
