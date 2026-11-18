@@ -149,6 +149,74 @@ public class LeitorXmlTests
         Assert.Throws<FormatException>(() => LeitorXml.LerXml(xml));
     }
 
+    [Theory]
+    [InlineData("100,00000%", "100.00000")]
+    [InlineData("20,00000%", "20.00000")]
+    [InlineData("8,00000", "8.00000")]
+    public void LerXml_DeveAceitarQuotaComOuSemSimboloDePercentual(string quotaXml, string esperado)
+    {
+        var xml = $"<Relatorio><Linha><Instalacao>3001</Instalacao><Quota>{quotaXml}</Quota></Linha></Relatorio>";
+
+        var registro = Assert.Single(LeitorXml.LerXml(xml));
+
+        Assert.Equal(decimal.Parse(esperado, System.Globalization.CultureInfo.InvariantCulture), registro.Quota);
+    }
+
+    [Fact]
+    public void LerArquivo_DeveLerOArquivoRealDaCemig()
+    {
+        var registros = LeitorXml.LerArquivo(CaminhoArquivoReal());
+
+        Assert.NotEmpty(registros);
+        Assert.All(registros, r =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(r.Instalacao));
+            Assert.False(string.IsNullOrWhiteSpace(r.Modalidade));
+            Assert.False(string.IsNullOrWhiteSpace(r.Periodo));
+            Assert.False(string.IsNullOrWhiteSpace(r.PeriodoUso));
+        });
+    }
+
+    [Fact]
+    public void LerArquivo_DeveLerOsValoresDoArquivoRealComOsAcentosECamposNumericosCorretos()
+    {
+        var registros = LeitorXml.LerArquivo(CaminhoArquivoReal());
+
+        Assert.Equal(14, registros.Count);
+
+        var usina = registros[0];
+        Assert.Equal("3010000000", usina.Instalacao);
+        Assert.Equal("Geração compartilhada - Geradora", usina.Modalidade);
+        Assert.Equal(100m, usina.Quota);
+        Assert.Equal(11500m, usina.QtdGeracao);
+
+        // Formato brasileiro e duas tags Qtd_compensacao na mesma linha (2.250,00 + 0,00).
+        var recebedora = registros[2];
+        Assert.Equal("3010000101", recebedora.Instalacao);
+        Assert.Equal(2250m, recebedora.QtdConsumo);
+        Assert.Equal(2250m, recebedora.QtdCompensacao);
+
+        // Formato com ponto decimal e duas tags Qtd_compensacao (7400.0 + 500.0).
+        var formatoPonto = registros[4];
+        Assert.Equal("3010000202", formatoPonto.Instalacao);
+        Assert.Equal("2026-08", formatoPonto.Periodo);
+        Assert.Equal("2026-09", formatoPonto.PeriodoUso);
+        Assert.Equal(8000m, formatoPonto.QtdConsumo);
+        Assert.Equal(7900m, formatoPonto.QtdCompensacao);
+    }
+
+    private static string CaminhoArquivoReal()
+    {
+        var pasta = new DirectoryInfo(AppContext.BaseDirectory);
+        while (pasta is not null && !File.Exists(Path.Combine(pasta.FullName, "GreenVoltGd.slnx")))
+        {
+            pasta = pasta.Parent;
+        }
+
+        Assert.NotNull(pasta);
+        return Path.Combine(pasta.FullName, "data", "Relatorio_GD_UFV_Exemplo_2026-09.xml");
+    }
+
     [Fact]
     public void LerArquivo_DeveLerOMesmoXmlDeUmArquivo()
     {

@@ -29,7 +29,7 @@ public static class LeitorXml
             Modalidade: Texto(linha, "Modalidade"),
             Periodo: Texto(linha, "Periodo"),
             PeriodoUso: Texto(linha, "Periodo_uso"),
-            Quota: Decimal(linha, "Quota"),
+            Quota: Percentual(linha, "Quota"),
             QtdConsumo: Decimal(linha, "Qtd_consumo"),
             QtdRecebimento: Decimal(linha, "Qtd_recebimento"),
             QtdTransferencia: Decimal(linha, "Qtd_transferencia"),
@@ -47,5 +47,11 @@ public static class LeitorXml
     private static decimal Decimal(XElement linha, string tag)
     {
         return Numero.Parse(linha.Element(tag)?.Value);
+    }
+
+    // No XML real a quota vem como "20,00000%". O valor é mantido em pontos percentuais (20), sem dividir por 100.
+    private static decimal Percentual(XElement linha, string tag)
+    {
+        return Numero.Parse(linha.Element(tag)?.Value?.Replace("%", string.Empty));
     }
 }
