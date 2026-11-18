@@ -55,3 +55,14 @@ Abra o `docs/ia-log.md` e adicione a **Interação 4**:
   1. Confirmada a regra de exclusão de "Recebedora" no filtro da usina, garantindo que UCs clientes com geração própria (ex: UC 7000110055) permaneçam na lista de UCs.
   2. Validado no XML real que a usina `3010000000` fecha a equação `Geracao == Transferencia + CompensacaoPropria` nos períodos `2026-08` (11.500 = 11.300 + 200) e `2026-09` (12.000 = 11.800 + 200).
 - **Verificação:** Executado `dotnet test` com 38 de 38 testes passando.
+
+## Interação 5 — Agrupamento das UCs Clientes, Ordenação Cronológica e Gabarito (`ProcessadorRelatorio.cs`)
+- **Pedido:** Implementar a apuração de `FaturasUc` agrupando por `Instalacao + PeriodoUso`, aplicando regras de soma seletiva, cálculo de saldo pelo menor/maior `Periodo` cronológico e validação contra o gabarito do XML real.
+- **Sugestão e Alinhamento com a IA:**
+  1. Ao cruzar o XML real com o gabarito (`7000110011`), identificou-se que o código da UC vem na tag `<Numero_uc>`. Foi adicionado `string NumeroUc = ""` em `RegistroGd` e atualizado `LeitorXml.cs`.
+  2. Na primeira rodada de testes de período inválido, um grupo com 1 único registro não disparava erro porque o `OrderBy` do LINQ otimiza coleções unitárias e não avalia a chave. A IA corrigiu validando todos os períodos antes do agrupamento.
+- **Correção / Decisão Humana:**
+  1. Aprovada a adição de `NumeroUc` com valor padrão para preservar a assinatura dos testes anteriores.
+  2. Mantida a validação estrita (`FormatException`) para `Periodo` e `PeriodoUso` inválidos ou vazios (*Fail-Fast*).
+  3. Validado o caso real da UC `7000110022` (`2026-09`), que possui duas linhas na mesma fatura (`Recebido = 3955 + 4130 = 8085`, `Consumo = 8000` sem somar, `SaldoAnterior = 300`, `Saldo = 485`), além da UC `7000110011` e da geração própria da UC `7000110055`.
+- **Verificação:** Executado `dotnet test` com 48 de 48 testes passando.

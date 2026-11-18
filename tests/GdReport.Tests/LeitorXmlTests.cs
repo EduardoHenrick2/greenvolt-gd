@@ -193,6 +193,7 @@ public class LeitorXmlTests
         // Formato brasileiro e duas tags Qtd_compensacao na mesma linha (2.250,00 + 0,00).
         var recebedora = registros[2];
         Assert.Equal("3010000101", recebedora.Instalacao);
+        Assert.Equal("7000110011", recebedora.NumeroUc);
         Assert.Equal(2250m, recebedora.QtdConsumo);
         Assert.Equal(2250m, recebedora.QtdCompensacao);
 

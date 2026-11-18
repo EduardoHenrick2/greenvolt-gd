@@ -12,4 +12,5 @@ public record RegistroGd(
     decimal QtdCompensacao,
     decimal QtdGeracao,
     decimal QtdSaldoAnt,
-    decimal QtdSaldoAtual);
+    decimal QtdSaldoAtual,
+    string NumeroUc = "");

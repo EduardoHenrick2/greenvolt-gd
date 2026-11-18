@@ -36,7 +36,8 @@ public static class LeitorXml
             QtdCompensacao: linha.Elements("Qtd_compensacao").Sum(e => Numero.Parse(e.Value)),
             QtdGeracao: Decimal(linha, "Qtd_geracao"),
             QtdSaldoAnt: Decimal(linha, "Qtd_saldo_ant"),
-            QtdSaldoAtual: Decimal(linha, "Qtd_saldo_atual"));
+            QtdSaldoAtual: Decimal(linha, "Qtd_saldo_atual"),
+            NumeroUc: Texto(linha, "Numero_uc"));
     }
 
     private static string Texto(XElement linha, string tag)
