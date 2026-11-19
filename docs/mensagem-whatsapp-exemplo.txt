@@ -1,0 +1,18 @@
+*Apuração de geração distribuída*
+*Usina 3010000000* (2026-08)
+- Geração: 11.500
+- Transferência: 11.300
+- Compensação própria: 200
+- Saldo anterior: 0
+- Saldo: 0
+*Usina 3010000000* (2026-09)
+- Geração: 12.000
+- Transferência: 11.800
+- Compensação própria: 200
+- Saldo anterior: 0
+- Saldo: 0
+*Faturas:* 11 no total, 8 sem alerta e 3 com alerta.
+*Alertas*
+- UC 7000110033, fatura 2026-09: calculado 135, arquivo 60 (diferença 75)
+- UC 7000110033, fatura 2026-10: calculado 1.830, arquivo 155 (diferença 1.675)
+- UC 7000110044, fatura 2026-09: calculado 30, arquivo 530 (diferença 500)

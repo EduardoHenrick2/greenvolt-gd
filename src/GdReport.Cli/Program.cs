@@ -1,8 +1,8 @@
-﻿using System.Text;
+using System.Text;
 using System.Xml;
 using GdReport;
 
-const string Uso = "Uso: GdReport.Cli <arquivo.xml> [--md <saida.md>] [--csv <saida.csv>]";
+const string Uso = "Uso: GdReport.Cli <arquivo.xml> [--md <saida.md>] [--csv <saida.csv>] [--whatsapp [saida.txt]]";
 
 if (args.Length == 0)
 {
@@ -13,25 +13,35 @@ if (args.Length == 0)
 var caminho = args[0];
 string? caminhoMd = null;
 string? caminhoCsv = null;
-
-for (var i = 1; i < args.Length; i += 2)
+var gerarWhatsapp = false;
+string? caminhoWhatsapp = null;
+var indice = 1;
+while (indice < args.Length)
 {
-    if (i + 1 >= args.Length || args[i] is not ("--md" or "--csv"))
+    var flag = args[indice];
+    if (flag == "--whatsapp")
+    {
+        gerarWhatsapp = true;
+        var temCaminho = indice + 1 < args.Length && !args[indice + 1].StartsWith("--", StringComparison.Ordinal);
+        caminhoWhatsapp = temCaminho ? args[indice + 1] : null;
+        indice += temCaminho ? 2 : 1;
+        continue;
+    }
+    if (indice + 1 >= args.Length || flag is not ("--md" or "--csv"))
     {
         Console.Error.WriteLine(Uso);
         return 1;
     }
-
-    if (args[i] == "--md")
+    if (flag == "--md")
     {
-        caminhoMd = args[i + 1];
+        caminhoMd = args[indice + 1];
     }
     else
     {
-        caminhoCsv = args[i + 1];
+        caminhoCsv = args[indice + 1];
     }
+    indice += 2;
 }
-
 if (!File.Exists(caminho))
 {
     Console.Error.WriteLine($"Arquivo não encontrado: {caminho}");
@@ -57,6 +67,26 @@ try
         File.WriteAllText(caminhoCsv, FormatadorRelatorio.Csv(relatorio.FaturasUc) + "\n", new UTF8Encoding(true));
     }
 
+    if (gerarWhatsapp)
+    {
+        var configuracao = ConfiguracaoLlm.DeVariaveisAmbiente();
+        IClienteLlm? cliente = configuracao is null ? null : new ClienteLlmHttp(configuracao);
+        var resultado = await OrquestradorMensagemWhatsapp.GerarAsync(relatorio, cliente);
+        Console.WriteLine();
+        Console.WriteLine("--- Mensagem WhatsApp ---");
+        Console.WriteLine();
+        Console.WriteLine(resultado.Mensagem);
+        Console.WriteLine();
+        Console.WriteLine("-------------------------");
+        Console.WriteLine();
+        Console.WriteLine(resultado.Conferida
+            ? $"[Auditoria WhatsApp] OK - 100% dos números conferidos | Origem: {resultado.Origem}"
+            : $"[Auditoria WhatsApp] ALERTA - divergência detectada | Origem: {resultado.Origem}");
+        if (caminhoWhatsapp is not null)
+        {
+            File.WriteAllText(caminhoWhatsapp, resultado.Mensagem + "\n", new UTF8Encoding(false));
+        }
+    }
     return 0;
 }
 catch (Exception ex) when (ex is XmlException or FormatException)
