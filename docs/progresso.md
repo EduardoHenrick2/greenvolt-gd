@@ -11,4 +11,4 @@
 
 ## Em Andamento / Próximo Passo
 - [x] **Fase 7 (Parte 1):** `README.md` completo (visão geral, execução, exemplo de saída, decisões e processo com IA).
-- [ ] **Fase 7 (Parte 2):** Revisão de clone limpo e entrega antes de 19/11 às 18h.
+- [x] **Fase 7 (Parte 2):** Revisão de clone limpo e entrega antes de 19/11 às 18h.
