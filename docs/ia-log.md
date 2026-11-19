@@ -87,4 +87,19 @@
 - **Correção / Decisão Humana:**
   1. Mantida a formatação numérica em pt-BR no CSV para consistência direta com a tabela exibida e a conferência em planilha.
   2. Mantido o CSV focado nas 11 faturas de UC e a usina exibida separadamente no relatório Markdown/console.
-- **Verificação:** Executado `dotnet test` com 69+ testes passando e conferidos `docs/saida-exemplo.md` e `docs/saida-exemplo.csv` gerados a partir de `data/Relatorio_GD_UFV_Exemplo_2026-09.xml`.
+- **Verificação:** Executado `dotnet test` com 76 de 76 testes passando e conferidos `docs/saida-exemplo.md` e `docs/saida-exemplo.csv` gerados a partir de `data/Relatorio_GD_UFV_Exemplo_2026-09.xml`.
+## Interação 10 — Bônus: Mensagem de WhatsApp com Conferência de Números (`ConferidorMensagem.cs`, `GeradorMensagemWhatsapp.cs`, `ClienteLlmHttp.cs`, `OrquestradorMensagemWhatsapp.cs`, `Program.cs`)
+- **Pedido:** Em cinco fases (6.1 a 6.5), gerar uma mensagem de WhatsApp com LLM sem permitir número inventado: conferidor determinístico, cliente HTTP nativo, orquestrador com re-tentativa e fallback e a flag `--whatsapp` na CLI. Tudo em TDD, sem pacotes NuGet novos.
+- **Sugestão e Alinhamento com a IA:**
+  1. **6.1:** `ConferidorMensagem` monta o conjunto de números oficiais do relatório (usinas, faturas, números dos alertas e contagens), extrai os números pt-BR da mensagem e ignora datas (`2026-09`, `09/2026`) e códigos de usina e UC.
+  2. **6.2:** `IClienteLlm`, `MontarPrompt`, `MontarPromptCorrecao` e `GerarFallbackDeterministico`. O fallback evita numerar bullets para não gerar números soltos no conferidor.
+  3. **6.3:** `ClienteLlmHttp` com `HttpClient` e `System.Text.Json`, formato `chat/completions`, `Authorization: Bearer` opcional e timeout por `CancellationTokenSource` ligado ao token do chamador. `ConfiguracaoLlm.DeVariaveisAmbiente` tem overload com `Func<string, string?>` para testar sem tocar no ambiente do processo.
+  4. **6.4:** `OrquestradorMensagemWhatsapp` com até `maxTentativas`, prompt de correção a partir da 2ª tentativa e fallback em erro recuperável ou esgotamento das tentativas. Cancelamento do chamador é propagado.
+  5. **6.5:** flag `--whatsapp [arquivo]` na CLI, que usa a LLM se `GD_LLM_ENDPOINT` estiver definida e o fallback caso contrário, e geração de `docs/mensagem-whatsapp-exemplo.txt`.
+- **Correção / Decisão Humana:**
+  1. O `Numero.Parse` trata ponto sem vírgula como decimal (`1.830` vira 1,83). O conferidor remove os pontos de milhar antes de converter e a comparação ignora o sinal. Ambos os comportamentos foram aprovados.
+  2. `Endpoint` é a URL completa da rota. Timeout inválido, zero ou negativo cai no padrão de 15 s.
+  3. `Tentativas` conta todas as chamadas feitas à LLM, inclusive a que falhou.
+  4. Na 6.3, o teste de cancelamento falhou porque o handler fake ignorava o token. Corrigido o fake, sem mudar o código de produção.
+  5. Na 6.4, a precedência de `or` e `&&` no filtro do `catch` aplicava a checagem do token a todas as exceções. Corrigido com parênteses, de modo que só o `OperationCanceledException` depende do token do chamador.
+- **Verificação:** Executado `dotnet test` com 120 de 120 testes passando e sem avisos. A CLI foi executada sobre `data/Relatorio_GD_UFV_Exemplo_2026-09.xml` sem LLM configurada: a saída sem `--whatsapp`, os arquivos `--md`/`--csv` e os códigos de saída `0` e `1` ficaram idênticos aos anteriores, e `docs/mensagem-whatsapp-exemplo.txt` foi gerado com a auditoria `OK`.
